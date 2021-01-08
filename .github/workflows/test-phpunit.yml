@@ -1,0 +1,65 @@
+name: PHPUnit
+
+on: [push, pull_request]
+
+jobs:
+  tests:
+    runs-on: ubuntu-18.04
+    if: "!contains(github.event.head_commit.message, '[ci skip]')"
+
+    strategy:
+      fail-fast: false
+      matrix:
+        php: [ '8.0', '7.4', '7.3', '7.2', '7.1', '7.0', '5.6', '5.5', '5.4', '5.3' ]
+        DB: [ 'pdo/mysql', 'pdo/pgsql', 'pdo/sqlite', 'mysqli', 'pgsql', 'sqlite' ]
+        include:
+          - php: '5.6'
+            DB: 'mysql'
+          - php: '5.5'
+            DB: 'mysql'
+          - php: '5.4'
+            DB: 'mysql'
+          - php: '5.3'
+            DB: 'mysql'
+
+    services:
+      postgres:
+        image: postgres:12
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ci_test
+        ports:
+          - 5432:5432
+        options: --health-cmd=pg_isready --health-interval=10s --health-timeout=5s --health-retries=3
+
+      mysql:
+        image: mysql:5.7
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: true
+          MYSQL_USER: travis
+          MYSQL_PASSWORD: travis
+          MYSQL_DATABASE: ci_test
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Install PHP${{ matrix.php }} - DB ${{ matrix.DB }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          tools: composer, pecl
+          extensions: imagick, sqlite3, pgsql, mysqli, pdo, pdo_mysql, pdo_pgsql, pdo_sqlite
+          coverage: xdebug
+      - name: Setup composer
+        run: |
+          if [ '${{ matrix.php }}' = '8.0' ] || [ '${{ matrix.php }}' = '8.1' ] ; then sed -i 's/phpunit\/phpunit/sminnee\/phpunit/g' composer.json; composer config -g platform.php 7.4.11; fi
+          composer install --no-progress
+      - name: PHPUnit Test
+        run: |
+          php -d zend.enable_gc=0 -d date.timezone=UTC -d mbstring.func_overload=7 -d mbstring.internal_encoding=UTF-8 vendor/bin/phpunit --coverage-text --configuration tests/travis/${{ matrix.DB }}.phpunit.xml
+        env:
+          XDEBUG_MODE: coverage
