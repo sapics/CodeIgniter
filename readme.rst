@@ -1,4 +1,14 @@
 ###################
+CAUTION
+###################
+
+The repository (CodeIgniter31/CodeIgniter31) is not an official one, it is just a personal one.
+I do not guarantee future updates or operations of them.
+Please use it for a temporary tests, if anyone uses it. I recommend to wait for official release for production use.
+
+
+
+###################
 What is CodeIgniter
 ###################
 
