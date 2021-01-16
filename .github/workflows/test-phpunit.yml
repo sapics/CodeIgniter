@@ -73,6 +73,7 @@ jobs:
       - name: Override PHP ini values for JIT compiler
         if: matrix.compiler == 'jit'
         run: echo "PHP_INI_VALUES::assert.exception=1, zend.assertions=1, opcache.enable=1, opcache.enable_cli=1, opcache.optimization_level=-1, opcache.jit=1255, opcache.jit_buffer_size=64M" >> $GITHUB_ENV 
+
       - name: Install PHP${{ matrix.php }} - DB ${{ matrix.DB }}
         uses: shivammathur/setup-php@v2
         with:
@@ -80,10 +81,24 @@ jobs:
           tools: composer, pecl
           extensions: imagick, sqlite3, pgsql, mysqli, pdo, pdo_mysql, pdo_pgsql, pdo_sqlite
           coverage: xdebug
-      - name: Setup composer
-        run: |
-          if [ '${{ matrix.php }}' = '8.0' ] || [ '${{ matrix.php }}' = '8.1' ] ; then sed -i 's/phpunit\/phpunit/sminnee\/phpunit/g' composer.json; composer config -g platform.php 7.4.11; fi
-          composer install --no-progress
+
+      - name: Setup composer for PHP8.0+
+        run: if [ '${{ matrix.php }}' = '8.0' ] || [ '${{ matrix.php }}' = '8.1' ] ; then sed -i 's/phpunit\/phpunit/sminnee\/phpunit/g' composer.json; composer config -g platform.php 7.4.11; fi
+      - name: Get composer cache directory
+        id: composer-cache
+        run: echo "::set-output name=dir::$(composer config cache-files-dir)"
+      - name: Cache composer dependencies
+        uses: actions/cache@v2
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-   
+      - name: Install composer dependencies
+        run: composer install --no-progress --prefer-dist --optimize-autoloader
+
+      - name: Fix error in vfsStream
+        run: sed -i s/name{0}/name[0]/ vendor/mikey179/vfsstream/src/main/php/org/bovigo/vfs/vfsStream.php
+
       - name: PHPUnit Test
         run: |
           php -d zend.enable_gc=0 -d date.timezone=UTC -d mbstring.func_overload=7 -d mbstring.internal_encoding=UTF-8 vendor/bin/phpunit --coverage-text --configuration tests/travis/${{ matrix.DB }}.phpunit.xml
