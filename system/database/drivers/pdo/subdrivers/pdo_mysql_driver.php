@@ -35,7 +35,6 @@
  * @since	Version 3.0.0
  * @filesource
  */
-defined('BASEPATH') OR exit('No direct script access allowed');
 
 /**
  * PDO MySQL Database Adapter Class
