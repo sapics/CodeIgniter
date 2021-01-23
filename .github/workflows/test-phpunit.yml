@@ -1,39 +1,40 @@
-name: PHPUnit
+name: PHPUnit test CI
 
 on: [push, pull_request]
 
 jobs:
   tests:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     if: "!contains(github.event.head_commit.message, '[ci skip]')"
-    env:
-      PHP_INI_VALUES: assert.exception=1, zend.assertions=1
 
     strategy:
       fail-fast: false
       matrix:
-        php: [ '8.0', '7.4', '7.3', '7.2', '7.1' ]
+        php: [ 8.0, 7.4, 7.3, 7.2, 7.1 ]
         DB: [ 'pdo/mysql', 'pdo/pgsql', 'pdo/sqlite', 'mysqli', 'pgsql', 'sqlite' ]
         compiler: [ default ]
         include:
-          - php: '8.0'
+          - php: 8.0
             DB: 'pdo/mysql'
             compiler: jit
-          - php: '8.0'
+          - php: 8.0
             DB: 'pdo/pgsql'
             compiler: jit
-          - php: '8.0'
+          - php: 8.0
             DB: 'pdo/sqlite'
             compiler: jit
-          - php: '8.0'
+          - php: 8.0
             DB: 'mysqli'
             compiler: jit
-          - php: '8.0'
+          - php: 8.0
             DB: 'pgsql'
             compiler: jit
-          - php: '8.0'
+          - php: 8.0
             DB: 'sqlite'
             compiler: jit
+
+    env:
+      PHP_INI_VALUES: assert.exception=1, zend.assertions=1
 
     services:
       postgres:
@@ -74,7 +75,8 @@ jobs:
           coverage: xdebug
 
       - name: Setup composer for PHP8.0+
-        run: if [ '${{ matrix.php }}' = '8.0' ] || [ '${{ matrix.php }}' = '8.1' ] ; then sed -i 's/phpunit\/phpunit/sminnee\/phpunit/g' composer.json; composer config -g platform.php 7.4.11; fi
+        if: matrix.php >= 8.0
+        run: sed -i 's/phpunit\/phpunit/sminnee\/phpunit/g' composer.json; composer config -g platform.php 7.4.11
       - name: Get composer cache directory
         id: composer-cache
         run: echo "::set-output name=dir::$(composer config cache-files-dir)"
